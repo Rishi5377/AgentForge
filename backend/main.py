@@ -1006,6 +1006,18 @@ async def catch_all_proxy(path: str, request: Request):
 @app.websocket("/{path:path}")
 async def websocket_catch_all_proxy(websocket: WebSocket, path: str):
     session_id = websocket.cookies.get("preview_session")
+    
+    if not session_id:
+        # WebSockets can sometimes pass the original page URL in referer or origin
+        referer = websocket.headers.get("referer", "")
+        if "/preview/" in referer:
+            try:
+                parts = referer.split("/preview/")
+                if len(parts) > 1:
+                    session_id = parts[1].split("/")[0]
+            except Exception:
+                pass
+                
     if not session_id and len(active_ports) == 1:
         session_id = list(active_ports.keys())[0]
         
