@@ -14,7 +14,8 @@ RUN apt-get update && apt-get install -y curl gnupg git && \
 RUN useradd -m -u 1000 user
 USER user
 ENV HOME=/home/user \
-    PATH=/home/user/.local/bin:$PATH
+    PATH=/home/user/.local/bin:$PATH \
+    PYTHONPATH=/home/user/app/backend
 
 # Set working directory to the user's home app directory
 WORKDIR $HOME/app
