@@ -169,10 +169,14 @@ async def run_tests_node(state: GraphState):
     qa_env["NODE_OPTIONS"] = "--max-old-space-size=128"
     qa_env["NEXT_TELEMETRY_DISABLED"] = "1"
 
+    pnpm_path = shutil.which("pnpm") or "pnpm"
+    npm_path = shutil.which("npm") or "npm"
+    npx_path = shutil.which("npx") or "npx"
+
     nice_prefix = "nice -n 19 " if os.name != "nt" else ""
     if os.path.exists(os.path.join(workspace_dir, "prisma", "schema.prisma")):
-        await asyncio.to_thread(subprocess.run, f"{nice_prefix}npx prisma format", shell=True, cwd=workspace_dir, capture_output=True, env=qa_env)
-        await asyncio.to_thread(subprocess.run, f"{nice_prefix}npx prisma generate", shell=True, cwd=workspace_dir, capture_output=True, env=qa_env)
+        await asyncio.to_thread(subprocess.run, f'{nice_prefix}"{npx_path}" prisma format', shell=True, cwd=workspace_dir, capture_output=True, env=qa_env)
+        await asyncio.to_thread(subprocess.run, f'{nice_prefix}"{npx_path}" prisma generate', shell=True, cwd=workspace_dir, capture_output=True, env=qa_env)
         
     print("Installing dependencies before test...")
     nice_prefix = "nice -n 19 " if os.name != "nt" else ""
@@ -182,18 +186,18 @@ async def run_tests_node(state: GraphState):
     
     # Optimize installation speed: prefer offline, skip audits
     if os.path.exists(os.path.join(workspace_dir, "pnpm-lock.yaml")):
-        install_res = await asyncio.to_thread(subprocess.run, f"{nice_prefix}{pnpm_path} install --no-frozen-lockfile --prefer-offline --reporter=silent", shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
+        install_res = await asyncio.to_thread(subprocess.run, f'{nice_prefix}"{pnpm_path}" install --no-frozen-lockfile --prefer-offline --reporter=silent', shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
     else:
-        install_res = await asyncio.to_thread(subprocess.run, f"{nice_prefix}{npm_path} install --prefer-offline --no-audit --no-fund --loglevel=error", shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
+        install_res = await asyncio.to_thread(subprocess.run, f'{nice_prefix}"{npm_path}" install --prefer-offline --no-audit --no-fund --loglevel=error', shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
         
     if install_res.returncode != 0:
         print(f"Dependency installation failed: {install_res.stderr} | {install_res.stdout}")
         print("Falling back to npm install...")
-        install_res = await asyncio.to_thread(subprocess.run, f"{nice_prefix}{npm_path} install --no-audit --no-fund --legacy-peer-deps --loglevel=error", shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
+        install_res = await asyncio.to_thread(subprocess.run, f'{nice_prefix}"{npm_path}" install --no-audit --no-fund --legacy-peer-deps --loglevel=error', shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
         if install_res.returncode != 0:
             print(f"Fallback npm install also failed: {install_res.stderr} | {install_res.stdout}")
         
-    result = await asyncio.to_thread(subprocess.run, f"{nice_prefix}{npx_path} -p typescript tsc --noEmit", shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
+    result = await asyncio.to_thread(subprocess.run, f'{nice_prefix}"{npx_path}" -p typescript tsc --noEmit', shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
     
     if result.returncode == 0:
         print("QA Test Passed! No errors.")
