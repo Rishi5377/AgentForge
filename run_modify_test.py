@@ -1,3 +1,4 @@
+import os
 import asyncio
 import websockets
 import json
@@ -15,7 +16,8 @@ Add the following features:
 """
 
 async def run_test():
-    uri = "ws://localhost:8002/ws"
+    port = os.getenv("PORT", os.getenv("BACKEND_PORT", 8001))
+    uri = f"ws://127.0.0.1:{port}/ws"
     try:
         async with websockets.connect(uri, ping_interval=None) as websocket:
             prompt_event = {

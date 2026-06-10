@@ -184,14 +184,11 @@ async def run_tests_node(state: GraphState):
     npm_path = shutil.which("npm") or "npm"
     npx_path = shutil.which("npx") or "npx"
     
-    # Optimize installation speed: prefer offline, skip audits
-    if os.path.exists(os.path.join(workspace_dir, "pnpm-lock.yaml")):
-        install_res = await asyncio.to_thread(subprocess.run, f'{nice_prefix}"{pnpm_path}" install --no-frozen-lockfile --prefer-offline --reporter=silent', shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
-    else:
-        install_res = await asyncio.to_thread(subprocess.run, f'{nice_prefix}"{npm_path}" install --prefer-offline --no-audit --no-fund --loglevel=error', shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
+    # Optimize installation speed: forcefully use pnpm by default
+    install_res = await asyncio.to_thread(subprocess.run, f'{nice_prefix}"{pnpm_path}" install --no-frozen-lockfile --prefer-offline --reporter=silent', shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
         
     if install_res.returncode != 0:
-        print(f"Dependency installation failed: {install_res.stderr} | {install_res.stdout}")
+        print(f"pnpm install failed: {install_res.stderr} | {install_res.stdout}")
         print("Falling back to npm install...")
         install_res = await asyncio.to_thread(subprocess.run, f'{nice_prefix}"{npm_path}" install --no-audit --no-fund --legacy-peer-deps --loglevel=error', shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
         if install_res.returncode != 0:

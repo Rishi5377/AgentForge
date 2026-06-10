@@ -12,8 +12,8 @@ import os
 import subprocess
 import re
 import shutil
-from fastapi import Request
-from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
+from fastapi import Request, Response
+from fastapi.responses import FileResponse, StreamingResponse, JSONResponse, HTMLResponse
 import httpx
 import websockets
 
@@ -27,10 +27,51 @@ from memory.persistence import init_db, log_event, create_or_update_project, get
 from pydantic import BaseModel
 from typing import Dict, Any, List
 
+IS_DEMO_MODE = os.getenv("NEXT_PUBLIC_IS_DEMO", "false").lower() == "true" or os.getenv("IS_DEMO", "false").lower() == "true"
+
+async def cleanup_worker():
+    while True:
+        try:
+            await asyncio.sleep(3600) # Check every hour
+            workspace_dir = os.path.join(os.path.dirname(__file__), "workspace")
+            if not os.path.exists(workspace_dir):
+                continue
+                
+            is_demo = os.getenv("IS_DEMO", "false").lower() == "true"
+            now = datetime.datetime.now().timestamp()
+            
+            for proj_folder in os.listdir(workspace_dir):
+                proj_path = os.path.join(workspace_dir, proj_folder)
+                if not os.path.isdir(proj_path):
+                    continue
+                
+                mtime = os.path.getmtime(proj_path)
+                age_hours = (now - mtime) / 3600.0
+                
+                threshold = float(os.getenv("CLEANUP_HOURS", 1.0 if is_demo else 24.0))
+                
+                if age_hours > threshold:
+                    if is_demo:
+                        print(f"Demo Mode Cleanup: Wiping entire old project {proj_folder} to save space.")
+                        shutil.rmtree(proj_path, ignore_errors=True)
+                    else:
+                        node_modules = os.path.join(proj_path, "node_modules")
+                        next_cache = os.path.join(proj_path, ".next")
+                        
+                        if os.path.exists(node_modules):
+                            shutil.rmtree(node_modules, ignore_errors=True)
+                        if os.path.exists(next_cache):
+                            shutil.rmtree(next_cache, ignore_errors=True)
+        except Exception as e:
+            print(f"Cleanup worker error: {e}")
+            await asyncio.sleep(3600)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    task = asyncio.create_task(cleanup_worker())
     yield
+    task.cancel()
 
 app = FastAPI(lifespan=lifespan)
 
@@ -69,7 +110,24 @@ def save_settings(settings: dict):
 
 @app.get("/api/settings")
 async def get_settings():
-    return load_settings()
+    settings = load_settings()
+    
+    # Inject environment API keys so the frontend knows keys are configured (especially for Web/Demo version)
+    env_keys = {
+        "anthropic": os.getenv("ANTHROPIC_API_KEY", ""),
+        "gemini": os.getenv("GEMINI_API_KEY", ""),
+        "openai": os.getenv("OPENAI_API_KEY", ""),
+        "groq": os.getenv("GROQ_API_KEY", "")
+    }
+    
+    if "api_keys" not in settings:
+        settings["api_keys"] = {}
+        
+    for k, v in env_keys.items():
+        if v and not settings["api_keys"].get(k):
+            settings["api_keys"][k] = "Set via Environment Variable"
+            
+    return settings
 
 @app.post("/api/settings")
 async def update_settings(settings: SettingsSchema):
@@ -153,7 +211,15 @@ async def proxy_preview(session_id: str, request: Request, path: str = ""):
     if not port:
         return Response(content="Server not running", status_code=502)
     
-    url = f"http://127.0.0.1:{port}/{path}"
+    raw_path = request.url.path
+    prefix = f"/preview/{session_id}/"
+    if raw_path.startswith(prefix):
+        raw_path = "/" + raw_path[len(prefix):]
+    else:
+        raw_path = f"/{path}"
+        
+    proxy_host = "localhost"
+    url = f"http://{proxy_host}:{port}{raw_path}"
     
     query_string = request.url.query
     if query_string:
@@ -175,9 +241,21 @@ async def proxy_preview(session_id: str, request: Request, path: str = ""):
             status_code=response.status_code,
             headers=dict(response.headers)
         )
-        resp.set_cookie(key="preview_session", value=session_id, path="/", samesite="lax")
+        samesite_val = "none" if IS_DEMO_MODE else "lax"
+        secure_val = True if IS_DEMO_MODE else False
+        resp.set_cookie(key="preview_session", value=session_id, path="/", samesite=samesite_val, secure=secure_val)
         return resp
     except Exception as e:
+        if "127.0.0.1" in url:
+            try:
+                url_ipv6 = url.replace("127.0.0.1", "[::1]")
+                req = httpx_client.build_request(request.method, url_ipv6, headers=headers, content=await request.body())
+                response = await httpx_client.send(req, stream=True)
+                resp = StreamingResponse(response.aiter_raw(), status_code=response.status_code, headers=dict(response.headers))
+                resp.set_cookie(key="preview_session", value=session_id, path="/", samesite="none", secure=True)
+                return resp
+            except Exception as e2:
+                return {"error": f"Proxy error: {str(e2)}"}
         return {"error": f"Proxy error: {str(e)}"}
 
 @app.get("/api/projects/{project_id}/files")
@@ -356,11 +434,13 @@ async def stop_dev_server(session_id: str):
     global active_processes, active_ports
     if session_id in active_processes:
         try:
-            import psutil
-            parent = psutil.Process(active_processes[session_id].pid)
-            for child in parent.children(recursive=True):
-                child.kill()
-            parent.kill()
+            proc = active_processes[session_id]
+            import platform
+            if platform.system() == "Windows":
+                subprocess.run(f"taskkill /F /T /PID {proc.pid}", shell=True, capture_output=True)
+            else:
+                proc.terminate()
+                proc.kill()
         except:
             pass
         del active_processes[session_id]
@@ -375,16 +455,12 @@ async def stop_all_dev_servers():
         
     # Aggressive memory cleanup for Free Tier constraints
     try:
-        import psutil
-        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
-            try:
-                name = proc.info.get('name', '')
-                cmdline = proc.info.get('cmdline') or []
-                cmd_str = ' '.join(cmdline).lower()
-                if name == 'node' or 'node' in cmd_str or 'next-server' in cmd_str:
-                    proc.kill()
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                pass
+        import platform
+        if platform.system() == "Windows":
+            subprocess.run("taskkill /F /IM node.exe", shell=True, capture_output=True)
+        else:
+            subprocess.run("pkill -f node", shell=True, capture_output=True)
+            subprocess.run("pkill -f next-server", shell=True, capture_output=True)
     except Exception as e:
         print(f"Aggressive node cleanup failed: {e}")
 
@@ -393,9 +469,8 @@ async def start_dev_server(session_id: str, workspace_dir: str):
     is_already_running = False
     if session_id in active_processes:
         try:
-            import psutil
-            parent = psutil.Process(active_processes[session_id].pid)
-            if parent.is_running() and parent.status() != psutil.STATUS_ZOMBIE:
+            proc = active_processes[session_id]
+            if proc.poll() is None:
                 is_already_running = True
         except:
             pass
@@ -586,7 +661,6 @@ async def start_dev_server(session_id: str, workspace_dir: str):
     env["FORCE_COLOR"] = "1"
     env["PYTHONUNBUFFERED"] = "1"
     env["PORT"] = str(port_val)
-    env["NODE_OPTIONS"] = "--max-old-space-size=128"
     env["NEXT_TELEMETRY_DISABLED"] = "1"
 
     process = await asyncio.create_subprocess_exec(
@@ -697,9 +771,6 @@ async def websocket_endpoint(websocket: WebSocket):
                 await add_chat_message(session_id, "user", prompt)
                 
                 async def run_pipeline_task():
-                    # Stop ALL running dev servers across all sessions to free up massive amounts of RAM
-                    # This prevents 512MB RAM OOM kills on Render Free Tier
-                    await stop_all_dev_servers()
                     from workflows.pipeline import create_pipeline
                     pipeline = create_pipeline()
                     
@@ -875,29 +946,26 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         sess_id = active_connections.get(websocket)
         if sess_id:
-            # Kill processes tied to session
-            if sess_id in active_processes:
-                try:
-                    import psutil
-                    parent = psutil.Process(active_processes[sess_id].pid)
-                    for child in parent.children(recursive=True):
-                        child.kill()
-                    parent.kill()
-                except:
-                    pass
-                del active_processes[sess_id]
+            # We explicitly do NOT kill the dev server here!
+            # The test script exits when it receives 'server_ready',
+            # so the dev server must stay alive for the preview proxy.
+            # It will be cleaned up by stop_all_dev_servers() on the next run.
+            pass
         if websocket in active_connections:
             del active_connections[websocket]
  
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
 async def catch_all_proxy(path: str, request: Request):
     session_id = request.cookies.get("preview_session")
+    print(f"[DEBUG] catch_all_proxy path={path}, initial_session_id={session_id}, len(active_ports)={len(active_ports)}")
     if not session_id and len(active_ports) == 1:
         session_id = list(active_ports.keys())[0]
         
     if session_id and session_id in active_ports:
         port = active_ports[session_id]
-        url = f"http://127.0.0.1:{port}/{path}"
+        proxy_host = "localhost"
+        url = f"http://{proxy_host}:{port}{request.url.path}"
+        print(f"[DEBUG] catch_all_proxy proxing to {url}")
         
         query_string = request.url.query
         if query_string:
@@ -934,7 +1002,8 @@ async def websocket_catch_all_proxy(websocket: WebSocket, path: str):
     if session_id and session_id in active_ports:
         port = active_ports[session_id]
         
-        url = f"ws://127.0.0.1:{port}/{path}"
+        proxy_host = "localhost"
+        url = f"ws://{proxy_host}:{port}/{path}"
         query_string = websocket.url.query
         if query_string:
             url += f"?{query_string}"

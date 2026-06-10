@@ -10,4 +10,3 @@ aiosqlite
 langchain-google-genai
 httpx
 langchain-openai
-psutil
