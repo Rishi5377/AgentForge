@@ -181,7 +181,7 @@ async def run_tests_node(state: GraphState):
     npx_path = shutil.which("npx") or "npx"
     
     if os.path.exists(os.path.join(workspace_dir, "pnpm-lock.yaml")):
-        install_res = await asyncio.to_thread(subprocess.run, f"{nice_prefix}{pnpm_path} install --no-frozen-lockfile --child-concurrency=1 --network-concurrency=1 --reporter=append-only", shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
+        install_res = await asyncio.to_thread(subprocess.run, f"{nice_prefix}{pnpm_path} install --no-frozen-lockfile --reporter=append-only", shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
     else:
         install_res = await asyncio.to_thread(subprocess.run, f"{nice_prefix}{npm_path} install", shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
         

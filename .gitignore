@@ -67,4 +67,4 @@ backend/workspace/
 backend/*.db
 backend/settings.json
 *.db
-backend/memory/*.json  s c r a t c h _ c o d e b a s e . t x t  
+backend/memory/*.json

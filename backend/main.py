@@ -503,7 +503,7 @@ async def start_dev_server(session_id: str, workspace_dir: str):
         pnpm_path = shutil.which("pnpm")
         
         if has_pnpm_lock and pnpm_path:
-            cmd_args = nice_cmd + [pnpm_path, "install", "--no-frozen-lockfile", "--reporter=append-only", "--child-concurrency=1", "--network-concurrency=1"]
+            cmd_args = nice_cmd + [pnpm_path, "install", "--no-frozen-lockfile", "--reporter=append-only"]
         else:
             cmd_args = nice_cmd + [npm_path, "install", "--no-audit", "--no-fund", "--legacy-peer-deps"]
             
