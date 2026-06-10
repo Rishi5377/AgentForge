@@ -29,6 +29,15 @@ export function useWebSocket(url: string) {
       ws.onopen = () => {
         setIsConnected(true);
         console.log('WebSocket Connected');
+        
+        // Keep-alive heartbeat to prevent HF Spaces / Nginx from dropping the connection
+        const pingInterval = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping' }));
+          }
+        }, 30000);
+        
+        (ws as any)._pingInterval = pingInterval;
       };
 
       ws.onmessage = (event) => {
@@ -76,6 +85,7 @@ export function useWebSocket(url: string) {
       };
 
       ws.onclose = () => {
+        if ((ws as any)._pingInterval) clearInterval((ws as any)._pingInterval);
         setIsConnected(false);
         console.log('WebSocket Disconnected. Reconnecting in 3s...');
         reconnectTimeout.current = setTimeout(connect, 3000);
