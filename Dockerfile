@@ -20,11 +20,14 @@ ENV HOME=/home/user \
 WORKDIR $HOME/app
 
 # Install Python dependencies (run as user)
-COPY --chown=user requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --chown=user backend/requirements.txt ./backend/
+RUN pip install --no-cache-dir -r backend/requirements.txt
 
-# Copy backend source code and give ownership to the user
+# Copy the entire repo and give ownership to the user
 COPY --chown=user . .
+
+# Switch to the backend directory to run the server
+WORKDIR $HOME/app/backend
 
 # Expose the default Hugging Face port
 EXPOSE 7860
