@@ -1,0 +1,6 @@
+[FRAMEWORK-SPECIFIC INSTRUCTIONS: nextjs-shadcn backend]
+
+- **CRITICAL STARTUP RULE (NEXT.JS)**: You MUST use Next.js Route Handlers (`app/api/[...route]/route.ts`) or Server Actions for the backend APIs. 
+- DO NOT create a separate Express.js server. 
+- Leave `"dev"` in `package.json` as `"dev": "next dev"`.
+- Use the standard Next.js App Router API response formats (e.g. `NextResponse.json(...)`).

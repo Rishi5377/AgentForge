@@ -1,0 +1,17 @@
+{
+    "id": "vue-tailwind",
+    "name": "Vue + Tailwind v4",
+    "description": "A fast Vite + Vue template with Tailwind CSS v4 and TypeScript.",
+    "framework": "Vue",
+    "tags": [
+        "frontend",
+        "vite",
+        "tailwind",
+        "spa"
+    ],
+    "entrypoint": "npm run dev",
+    "variables": [
+        "PROJECT_NAME",
+        "AUTHOR"
+    ]
+}

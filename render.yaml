@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: agentforge-backend
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    # Using Free plan as requested. Note: Data will be wiped on server restarts.
+    plan: free
+    # Render requires explicit health checks for Docker
+    healthCheckPath: /api/settings
+    envVars:
+      # Render dynamically assigns the PORT
+      - key: PORT
+        value: "8000"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false

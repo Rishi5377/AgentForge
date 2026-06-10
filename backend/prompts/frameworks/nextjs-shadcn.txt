@@ -1,0 +1,7 @@
+[FRAMEWORK-SPECIFIC INSTRUCTIONS: nextjs-shadcn]
+
+- **ARCHITECTURE**: You are building a Next.js App Router application (`app/page.tsx`, `app/layout.tsx`).
+- **COMPONENTS**: By default, components in the `app` directory are React Server Components. If a component needs interactivity (hooks like `useState`, `useEffect`, or event listeners like `onClick`), you MUST include `"use client";` at the very top of the file.
+- **ROUTING**: Use Next.js native routing. Link between pages using `import Link from 'next/link'` and `<Link href="...">`.
+- **UI LIBRARY**: Use Tailwind CSS for styling. If the user asks for Shadcn UI components, generate the raw Tailwind component code or install them via `npx shadcn-ui@latest add [component]` if supported by the environment.
+- **CRUD UI & FEATURE COMPLETENESS**: For every backend feature requested, generate a fully functional UI component (e.g., forms, buttons, modals, tables). NEVER generate "skeleton" or read-only pages.

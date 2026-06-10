@@ -1,0 +1,40 @@
+{
+    "name":  "agentforge-nextjs-app",
+    "version":  "1.0.0",
+    "scripts":  {
+                    "dev":  "next dev",
+                    "build":  "next build",
+                    "start":  "next start",
+                    "lint":  "next lint"
+                },
+    "dependencies":  {
+                         "react":  "latest",
+                         "react-dom":  "latest",
+                         "next":  "latest",
+                         "lucide-react":  "latest",
+                         "clsx":  "latest",
+                         "tailwind-merge":  "latest",
+                         "bcryptjs":  "latest",
+                         "jsonwebtoken":  "latest",
+                         "stripe":  "latest",
+                         "nodemailer":  "latest",
+                         "uuid":  "latest",
+                         "zod":  "latest",
+                         "mongoose":  "latest",
+                         "@prisma/client":  "latest",
+                         "next-auth":  "latest",
+                         "framer-motion":  "latest",
+                         "axios":  "latest"
+                     },
+    "devDependencies":  {
+                            "typescript":  "latest",
+                            "@types/node":  "latest",
+                            "@types/react":  "latest",
+                            "@types/react-dom":  "latest",
+                            "postcss":  "latest",
+                            "tailwindcss":  "latest",
+                            "eslint":  "latest",
+                            "eslint-config-next":  "latest",
+                            "prisma": "latest"
+                        }
+}

@@ -1,0 +1,6 @@
+[FRAMEWORK-SPECIFIC INSTRUCTIONS: vue-tailwind]
+
+- **ARCHITECTURE**: You are building a Vue 3 application. Use the `<script setup>` Composition API for all components.
+- **ROUTING**: If the application requires multiple pages, install `vue-router` and use `<router-view>` and `<router-link>` for navigation. Do not use raw `<a href>` tags for internal links.
+- **UI LIBRARY**: Use Tailwind CSS for styling.
+- **CRUD UI & FEATURE COMPLETENESS**: For every backend API endpoint, generate a fully functional Vue component to interact with it. NEVER generate "skeleton" or read-only pages. A backend feature without a matching UI form is considered a failure.

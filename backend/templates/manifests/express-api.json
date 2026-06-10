@@ -1,0 +1,16 @@
+{
+    "id": "express-api",
+    "name": "Express.js API",
+    "description": "A robust Node.js backend using Express and TypeScript.",
+    "framework": "Express",
+    "tags": [
+        "backend",
+        "api",
+        "node"
+    ],
+    "entrypoint": "npm run dev",
+    "variables": [
+        "PROJECT_NAME",
+        "AUTHOR"
+    ]
+}

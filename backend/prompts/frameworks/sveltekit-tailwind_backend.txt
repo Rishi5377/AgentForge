@@ -1,0 +1,6 @@
+[FRAMEWORK-SPECIFIC INSTRUCTIONS: sveltekit-tailwind backend]
+
+- **CRITICAL STARTUP RULE (SVELTEKIT)**: You MUST use SvelteKit server endpoints (`src/routes/api/[...route]/+server.ts`) or form actions (`+page.server.ts`) for the backend APIs. 
+- DO NOT create a separate Express.js server. 
+- Leave `"dev"` in `package.json` as `"dev": "vite dev"`.
+- Return responses using standard Web APIs (`new Response(...)` or SvelteKit's `json(...)` helper).
