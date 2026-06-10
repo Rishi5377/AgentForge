@@ -47,7 +47,7 @@ export default function GitHubSyncModal({ isOpen, onClose, projectId }: GitHubSy
     setSuccess(null);
 
     try {
-      const apiUrl = (process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8001").replace('ws', 'http');
+      const apiUrl = (process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8001").replace('wss://', 'https://').replace('ws://', 'http://');
       const res = await fetch(`${apiUrl}/api/projects/${projectId}/github`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

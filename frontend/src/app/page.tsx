@@ -90,7 +90,7 @@ export default function Home() {
 
   // Check API keys on mount
   useEffect(() => {
-    const API_URL = (process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8001').replace('ws', 'http');
+    const API_URL = (process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8001').replace('wss://', 'https://').replace('ws://', 'http://');
     fetch(`${API_URL}/api/settings`)
       .then(res => res.json())
       .then(data => {
