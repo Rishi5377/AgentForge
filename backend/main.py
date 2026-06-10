@@ -212,12 +212,6 @@ async def proxy_preview(session_id: str, request: Request, path: str = ""):
         return Response(content="Server not running", status_code=502)
     
     raw_path = request.url.path
-    prefix = f"/preview/{session_id}/"
-    if raw_path.startswith(prefix):
-        raw_path = "/" + raw_path[len(prefix):]
-    else:
-        raw_path = f"/{path}"
-        
     proxy_host = "127.0.0.1"
     url = f"http://{proxy_host}:{port}{raw_path}"
     
@@ -649,6 +643,36 @@ async def start_dev_server(session_id: str, workspace_dir: str):
     
     port_val = get_free_port()
     
+    # Ensure next.config.mjs supports basePath for Next.js projects
+    if os.path.exists(os.path.join(workspace_dir, "package.json")):
+        try:
+            config_path_mjs = os.path.join(workspace_dir, "next.config.mjs")
+            config_path_js = os.path.join(workspace_dir, "next.config.js")
+            config_content = """/** @type {import('next').NextConfig} */
+const nextConfig = {
+    basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
+};
+export default nextConfig;
+"""
+            js_content = """/** @type {import('next').NextConfig} */
+const nextConfig = {
+    basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
+};
+module.exports = nextConfig;
+"""
+            if os.path.exists(config_path_mjs):
+                with open(config_path_mjs, "w") as f:
+                    f.write(config_content)
+            elif os.path.exists(config_path_js):
+                with open(config_path_js, "w") as f:
+                    f.write(js_content)
+            else:
+                # Default to .mjs if neither exists
+                with open(config_path_mjs, "w") as f:
+                    f.write(config_content)
+        except Exception as e:
+            print(f"[Warning] Failed to update next.config: {e}")
+            
     # Dynamically determine the start script
     start_script = "dev"
     if pkg_data.get("scripts"):
@@ -662,6 +686,7 @@ async def start_dev_server(session_id: str, workspace_dir: str):
     env["PYTHONUNBUFFERED"] = "1"
     env["PORT"] = str(port_val)
     env["NEXT_TELEMETRY_DISABLED"] = "1"
+    env["NEXT_PUBLIC_BASE_PATH"] = f"/preview/{session_id}"
 
     process = await asyncio.create_subprocess_exec(
         npm_path, "run", start_script,
@@ -1011,72 +1036,60 @@ async def catch_all_proxy(path: str, request: Request):
             
     return JSONResponse({"error": "Not Found", "path": path}, status_code=404)
 
-@app.websocket("/{path:path}")
-async def websocket_catch_all_proxy(websocket: WebSocket, path: str):
-    session_id = websocket.cookies.get("preview_session")
+@app.websocket("/preview/{session_id}/{path:path}")
+async def proxy_preview_websocket(websocket: WebSocket, session_id: str, path: str):
+    port = active_ports.get(session_id)
+    if not port:
+        await websocket.close(code=1011)
+        return
+        
+    raw_path = websocket.url.path
+    proxy_host = "127.0.0.1"
+    url = f"ws://{proxy_host}:{port}{raw_path}"
     
-    if not session_id:
-        # WebSockets can sometimes pass the original page URL in referer or origin
-        referer = websocket.headers.get("referer", "")
-        if "/preview/" in referer:
-            try:
-                parts = referer.split("/preview/")
-                if len(parts) > 1:
-                    session_id = parts[1].split("/")[0]
-            except Exception:
-                pass
-                
-    if not session_id and len(active_ports) == 1:
-        session_id = list(active_ports.keys())[0]
+    query_string = websocket.url.query
+    if query_string:
+        url += f"?{query_string}"
         
-    print(f"[WS Proxy] Path: {path}, session_id: {session_id}, active_ports: {active_ports}")
-    print(f"[WS Proxy Headers] {websocket.headers}")
-    if session_id and session_id in active_ports:
-        port = active_ports[session_id]
-        
-        proxy_host = "127.0.0.1"
-        url = f"ws://{proxy_host}:{port}/{path}"
-        query_string = websocket.url.query
-        if query_string:
-            url += f"?{query_string}"
-            
-        try:
-            await websocket.accept()
-            async with websockets.connect(url) as target_ws:
-                async def forward_to_target():
-                    try:
-                        while True:
-                            msg = await websocket.receive()
-                            if "text" in msg and msg["text"] is not None:
-                                await target_ws.send(msg["text"])
-                            elif "bytes" in msg and msg["bytes"] is not None:
-                                await target_ws.send(msg["bytes"])
-                    except Exception:
-                        pass
-
-                async def forward_from_target():
-                    try:
-                        while True:
-                            msg = await target_ws.recv()
-                            if isinstance(msg, str):
-                                await websocket.send_text(msg)
-                            else:
-                                await websocket.send_bytes(msg)
-                    except Exception:
-                        pass
-                
-                await asyncio.gather(
-                    forward_to_target(),
-                    forward_from_target()
-                )
+    try:
+        await websocket.accept()
+        async with websockets.connect(url) as target_ws:
+            async def forward_to_target():
                 try:
-                    await websocket.close()
+                    while True:
+                        msg = await websocket.receive()
+                        if "text" in msg and msg["text"] is not None:
+                            await target_ws.send(msg["text"])
+                        elif "bytes" in msg and msg["bytes"] is not None:
+                            await target_ws.send(msg["bytes"])
                 except Exception:
                     pass
-        except Exception:
+
+            async def forward_from_target():
+                try:
+                    while True:
+                        msg = await target_ws.recv()
+                        if isinstance(msg, str):
+                            await websocket.send_text(msg)
+                        else:
+                            await websocket.send_bytes(msg)
+                except Exception:
+                    pass
+            
+            await asyncio.gather(
+                forward_to_target(),
+                forward_from_target()
+            )
+            try:
+                await websocket.close()
+            except Exception:
+                pass
+    except Exception as e:
+        print(f"[WS Proxy Error] {e}")
+        try:
+            await websocket.close(code=1011)
+        except:
             pass
-    else:
-        await websocket.close(code=403)
 
 if __name__ == "__main__":
     import uvicorn
