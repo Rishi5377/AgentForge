@@ -166,7 +166,7 @@ async def run_tests_node(state: GraphState):
     print(f"\n--- Running QA Test pass #{state['qa_retry_count'] + 1} ---")
     
     qa_env = os.environ.copy()
-    qa_env["NODE_OPTIONS"] = "--max-old-space-size=128"
+    qa_env["NODE_OPTIONS"] = "--max-old-space-size=4096"
     qa_env["NEXT_TELEMETRY_DISABLED"] = "1"
 
     pnpm_path = shutil.which("pnpm") or "pnpm"
