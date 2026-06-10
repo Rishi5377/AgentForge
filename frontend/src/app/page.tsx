@@ -277,6 +277,7 @@ export default function Home() {
                     <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`} alt="avatar" />
                   </div>
                   <span className="text-sm font-medium">{username}</span>
+                  <Settings size={14} className="text-lovable-muted ml-1" />
                 </>
               )}
             </div>
