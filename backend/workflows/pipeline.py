@@ -180,15 +180,16 @@ async def run_tests_node(state: GraphState):
     npm_path = shutil.which("npm") or "npm"
     npx_path = shutil.which("npx") or "npx"
     
+    # Optimize installation speed: prefer offline, skip audits
     if os.path.exists(os.path.join(workspace_dir, "pnpm-lock.yaml")):
-        install_res = await asyncio.to_thread(subprocess.run, f"{nice_prefix}{pnpm_path} install --no-frozen-lockfile --reporter=append-only", shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
+        install_res = await asyncio.to_thread(subprocess.run, f"{nice_prefix}{pnpm_path} install --no-frozen-lockfile --prefer-offline --reporter=silent", shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
     else:
-        install_res = await asyncio.to_thread(subprocess.run, f"{nice_prefix}{npm_path} install", shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
+        install_res = await asyncio.to_thread(subprocess.run, f"{nice_prefix}{npm_path} install --prefer-offline --no-audit --no-fund --loglevel=error", shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
         
     if install_res.returncode != 0:
         print(f"Dependency installation failed: {install_res.stderr} | {install_res.stdout}")
         print("Falling back to npm install...")
-        install_res = await asyncio.to_thread(subprocess.run, f"{nice_prefix}{npm_path} install --no-audit --no-fund --legacy-peer-deps", shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
+        install_res = await asyncio.to_thread(subprocess.run, f"{nice_prefix}{npm_path} install --no-audit --no-fund --legacy-peer-deps --loglevel=error", shell=True, cwd=workspace_dir, capture_output=True, text=True, env=qa_env)
         if install_res.returncode != 0:
             print(f"Fallback npm install also failed: {install_res.stderr} | {install_res.stdout}")
         
@@ -232,6 +233,10 @@ def apply_file_edit(workspace_dir: str, file_edit: FileEdit):
     full_path = os.path.abspath(os.path.join(workspace_dir, file_edit.filepath))
     if not full_path.startswith(os.path.abspath(workspace_dir)):
         return # Path traversal protection
+
+    if file_edit.filepath.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.ico', '.webp')):
+        print(f"Skipping binary image file write for {file_edit.filepath}")
+        return # Block writing text contents to binary image files
 
     if file_edit.is_edit:
         if not os.path.exists(full_path):
