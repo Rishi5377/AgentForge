@@ -218,7 +218,7 @@ async def proxy_preview(session_id: str, request: Request, path: str = ""):
     else:
         raw_path = f"/{path}"
         
-    proxy_host = "localhost"
+    proxy_host = "127.0.0.1"
     url = f"http://{proxy_host}:{port}{raw_path}"
     
     query_string = request.url.query
@@ -974,7 +974,7 @@ async def catch_all_proxy(path: str, request: Request):
         
     if session_id and session_id in active_ports:
         port = active_ports[session_id]
-        proxy_host = "localhost"
+        proxy_host = "127.0.0.1"
         url = f"http://{proxy_host}:{port}{request.url.path}"
         print(f"[DEBUG] catch_all_proxy proxing to {url}")
         
@@ -998,8 +998,16 @@ async def catch_all_proxy(path: str, request: Request):
                 status_code=response.status_code,
                 headers=dict(response.headers)
             )
-        except Exception:
-            pass
+        except Exception as e:
+            if "127.0.0.1" in url:
+                try:
+                    url_ipv6 = url.replace("127.0.0.1", "[::1]")
+                    req = httpx_client.build_request(request.method, url_ipv6, headers=headers, content=await request.body())
+                    response = await httpx_client.send(req, stream=True)
+                    return StreamingResponse(response.aiter_raw(), status_code=response.status_code, headers=dict(response.headers))
+                except Exception:
+                    pass
+            print(f"[DEBUG] catch_all_proxy error: {e}")
             
     return JSONResponse({"error": "Not Found", "path": path}, status_code=404)
 
@@ -1021,11 +1029,12 @@ async def websocket_catch_all_proxy(websocket: WebSocket, path: str):
     if not session_id and len(active_ports) == 1:
         session_id = list(active_ports.keys())[0]
         
-    print(f"[WS Proxy] Path: {path}, Cookies: {websocket.cookies}, session_id: {session_id}, active_ports: {active_ports}")
+    print(f"[WS Proxy] Path: {path}, session_id: {session_id}, active_ports: {active_ports}")
+    print(f"[WS Proxy Headers] {websocket.headers}")
     if session_id and session_id in active_ports:
         port = active_ports[session_id]
         
-        proxy_host = "localhost"
+        proxy_host = "127.0.0.1"
         url = f"ws://{proxy_host}:{port}/{path}"
         query_string = websocket.url.query
         if query_string:
