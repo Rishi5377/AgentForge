@@ -2,8 +2,8 @@ services:
   - type: web
     name: agentforge-backend
     env: docker
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     # Using Free plan as requested. Note: Data will be wiped on server restarts.
     plan: free
     # Render requires explicit health checks for Docker
