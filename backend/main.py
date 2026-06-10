@@ -151,9 +151,9 @@ class GithubSyncSchema(BaseModel):
 async def proxy_preview(session_id: str, request: Request, path: str = ""):
     port = active_ports.get(session_id)
     if not port:
-        return {"error": "Server not running for this session."}
+        return Response(content="Server not running", status_code=502)
     
-    url = f"http://localhost:{port}/{path}"
+    url = f"http://127.0.0.1:{port}/{path}"
     
     query_string = request.url.query
     if query_string:
@@ -897,7 +897,7 @@ async def catch_all_proxy(path: str, request: Request):
         
     if session_id and session_id in active_ports:
         port = active_ports[session_id]
-        url = f"http://localhost:{port}/{path}"
+        url = f"http://127.0.0.1:{port}/{path}"
         
         query_string = request.url.query
         if query_string:
@@ -934,7 +934,7 @@ async def websocket_catch_all_proxy(websocket: WebSocket, path: str):
     if session_id and session_id in active_ports:
         port = active_ports[session_id]
         
-        url = f"ws://localhost:{port}/{path}"
+        url = f"ws://127.0.0.1:{port}/{path}"
         query_string = websocket.url.query
         if query_string:
             url += f"?{query_string}"
