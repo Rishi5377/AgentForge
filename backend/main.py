@@ -957,6 +957,17 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
 async def catch_all_proxy(path: str, request: Request):
     session_id = request.cookies.get("preview_session")
+    
+    if not session_id:
+        referer = request.headers.get("referer", "")
+        if "/preview/" in referer:
+            try:
+                parts = referer.split("/preview/")
+                if len(parts) > 1:
+                    session_id = parts[1].split("/")[0]
+            except Exception:
+                pass
+                
     print(f"[DEBUG] catch_all_proxy path={path}, initial_session_id={session_id}, len(active_ports)={len(active_ports)}")
     if not session_id and len(active_ports) == 1:
         session_id = list(active_ports.keys())[0]

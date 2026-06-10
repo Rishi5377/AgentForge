@@ -26,7 +26,7 @@ def deploy():
             folder_path="hf_build",
             repo_id=repo_id,
             repo_type="space",
-            token=hf_token,
+            token=hf_token if hf_token else None,
             commit_message="Deploy Web Version Backend (Fast)",
             ignore_patterns=["*.pyc", "__pycache__/*", "*.png"]
         )
