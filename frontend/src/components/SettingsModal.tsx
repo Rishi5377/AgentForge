@@ -25,7 +25,7 @@ interface SettingsModalProps {
 
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const isDemo = process.env.NEXT_PUBLIC_IS_DEMO === 'true';
-  const [username, setUsername] = useState('rishi077');
+  const [username, setUsername] = useState('');
   const [provider, setProvider] = useState('openai');
   const [model, setModel] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);

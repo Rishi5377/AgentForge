@@ -22,7 +22,7 @@
                          "zod":  "latest",
                          "mongoose":  "latest",
                          "@prisma/client":  "latest",
-                         "next-auth":  "latest",
+                         "next-auth":  "^4.24.7",
                          "framer-motion":  "latest",
                          "axios":  "latest"
                      },

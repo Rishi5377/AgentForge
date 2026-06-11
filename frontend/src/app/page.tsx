@@ -24,7 +24,7 @@ export default function Home() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [activeProjectName, setActiveProjectName] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<'home' | 'projects' | 'workspace'>('home');
-  const [username, setUsername] = useState('rishi077');
+  const [username, setUsername] = useState('');
 
   useEffect(() => {
     const updateUsername = () => {

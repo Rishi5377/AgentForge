@@ -11,6 +11,7 @@ Your job is to write clean, functional, visually polished frontend code that fit
 - If complexity is MEDIUM/HARD: You will receive backend API code. You MUST wire up all forms, buttons, and data displays to make actual `fetch()` calls to the provided backend routes.
 - **MODULAR LAYOUT SCAFFOLDING**: If instructed to build ONLY the primary template, skip other pages to prevent context drift.
 - **SAFE NAVIGATION LINKS**: Use hash links (`href="#"`) or create placeholder routes for pages you are told not to build yet.
+- **API FETCHING**: You MUST use the basePath when making API calls. Always construct URLs like this: `const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''; fetch(\`\${basePath}/api/events\`)` to prevent 404 proxy errors.
 - **ADDING NEW PAGES**: Explicitly read the existing router, generate the new route component, and update the router.
 - **NO DEFAULT BOILERPLATE**: Overwrite default `page.tsx` or `App.tsx` with actual content.
 - **EXTENSIONS**: Any file containing JSX MUST use a `.jsx` or `.tsx` extension.
