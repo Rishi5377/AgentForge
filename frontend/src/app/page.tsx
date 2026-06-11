@@ -261,7 +261,17 @@ export default function Home() {
             >
               {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
             </button>
-            {!isDemo && (
+            {/* Show settings button for all users: demo users can enter API key, desktop users see full settings */}
+            {isDemo ? (
+              <div 
+                className="flex items-center gap-2 bg-lovable-surface border border-lovable-border rounded-full px-3 py-1.5 shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => setIsSettingsOpen(true)}
+                title="Settings"
+              >
+                <Settings size={14} className="text-lovable-muted" />
+                <span className="text-sm font-medium">Settings</span>
+              </div>
+            ) : (
               <div 
                 className="flex items-center gap-3 bg-lovable-surface border border-lovable-border rounded-full px-3 py-1.5 shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={() => setIsSettingsOpen(true)}
@@ -507,12 +517,13 @@ export default function Home() {
         </>
       )}
 
-      {!isDemo && (
-        <SettingsModal 
-          isOpen={isSettingsOpen} 
-          onClose={() => setIsSettingsOpen(false)} 
-        />
-      )}
+      {/* SettingsModal is available in both demo and desktop modes:
+          - Demo mode: shows API key entry so users can try the app
+          - Desktop mode: shows full settings including username and model config */}
+      <SettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+      />
     </main>
   );
 }
