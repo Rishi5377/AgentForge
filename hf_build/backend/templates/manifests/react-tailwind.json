@@ -1,0 +1,17 @@
+{
+    "id": "react-tailwind",
+    "name": "React + Tailwind v4",
+    "description": "A fast Vite + React template with Tailwind CSS v4 and TypeScript.",
+    "framework": "React",
+    "tags": [
+        "frontend",
+        "vite",
+        "tailwind",
+        "spa"
+    ],
+    "entrypoint": "npm run dev",
+    "variables": [
+        "PROJECT_NAME",
+        "AUTHOR"
+    ]
+}

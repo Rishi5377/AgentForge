@@ -1,0 +1,18 @@
+{
+    "models": {
+        "supervisor_provider": "gemini",
+        "supervisor_model": "gemini-3.1-flash-lite",
+        "frontend_provider": "gemini",
+        "frontend_model": "gemini-3.1-flash-lite",
+        "backend_provider": "gemini",
+        "backend_model": "gemini-3.1-flash-lite",
+        "db_provider": "gemini",
+        "db_model": "gemini-3.1-flash-lite",
+        "assembler_provider": "gemini",
+        "assembler_model": "gemini-3.1-flash-lite"
+    },
+    "api_keys": {},
+    "general": {
+        "preview_port": 5173
+    }
+}

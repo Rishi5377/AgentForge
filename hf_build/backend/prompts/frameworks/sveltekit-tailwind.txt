@@ -1,0 +1,6 @@
+[FRAMEWORK-SPECIFIC INSTRUCTIONS: sveltekit-tailwind]
+
+- **ARCHITECTURE**: You are building a SvelteKit application. Use Svelte 5 syntax or Svelte 4 `<script lang="ts">` components.
+- **ROUTING**: Use SvelteKit's file-system routing (`src/routes/+page.svelte`, `src/routes/[id]/+page.svelte`). Use standard `<a>` tags for navigation, as SvelteKit intercepts them automatically.
+- **UI LIBRARY**: Use Tailwind CSS for styling.
+- **CRUD UI & FEATURE COMPLETENESS**: For every backend feature requested, generate a fully functional Svelte component to interact with it. NEVER generate "skeleton" or read-only pages. A backend feature without a matching UI form is considered a failure.

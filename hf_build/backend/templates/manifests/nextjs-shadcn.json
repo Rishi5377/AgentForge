@@ -1,0 +1,17 @@
+{
+    "id": "nextjs-shadcn",
+    "name": "Next.js + shadcn/ui",
+    "description": "A full-stack Next.js App Router template with Tailwind and shadcn/ui.",
+    "framework": "Next.js",
+    "tags": [
+        "fullstack",
+        "ssr",
+        "tailwind",
+        "shadcn"
+    ],
+    "entrypoint": "npm run dev",
+    "variables": [
+        "PROJECT_NAME",
+        "AUTHOR"
+    ]
+}

@@ -1,0 +1,3 @@
+[FRAMEWORK-SPECIFIC INSTRUCTIONS: react-tailwind backend]
+
+- **CRITICAL STARTUP RULE (VITE / REACT-TAILWIND)**: You MUST write an Express server. Install `concurrently` and `cors`, and update `"dev"` in `package.json` to `"dev": "concurrently \"vite\" \"node src/server.js\""`. Ensure the Express server runs on port 3000 or 3001, and the frontend connects to it.

@@ -1,0 +1,7 @@
+[FRAMEWORK-SPECIFIC INSTRUCTIONS: react-tailwind]
+
+- **ROUTING**: If the application requires multiple pages, views, or dashboards, you MUST install `react-router-dom` and use `<BrowserRouter>`, `<Routes>`, and `<Link>` for all navigation. NEVER use raw `<a href>` tags or simple `useState` conditional rendering for multi-page apps.
+
+- **CRUD UI & FEATURE COMPLETENESS**: For every backend API endpoint (POST, PUT, DELETE) and every feature requested by the user, you MUST generate a fully functional corresponding UI component (e.g., forms, buttons, modals, tables). NEVER generate "skeleton" or read-only pages. A backend feature without a matching UI form is considered a failure.
+
+- **STYLING**: Use Tailwind CSS for all styling. Ensure modern, premium aesthetics.

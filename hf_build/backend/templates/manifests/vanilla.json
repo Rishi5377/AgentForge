@@ -1,0 +1,16 @@
+{
+    "id": "vanilla",
+    "name": "Vanilla TypeScript",
+    "description": "A minimal Vite + Vanilla TS template for simple logic and sites.",
+    "framework": "Vanilla",
+    "tags": [
+        "frontend",
+        "minimal",
+        "vite"
+    ],
+    "entrypoint": "npm run dev",
+    "variables": [
+        "PROJECT_NAME",
+        "AUTHOR"
+    ]
+}
