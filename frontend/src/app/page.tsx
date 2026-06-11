@@ -261,26 +261,19 @@ export default function Home() {
             >
               {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
             </button>
-            <div 
-              className="flex items-center gap-3 bg-lovable-surface border border-lovable-border rounded-full px-3 py-1.5 shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => setIsSettingsOpen(true)}
-              title="Settings"
-            >
-              {isDemo ? (
-                <>
-                  <Settings size={16} className="text-lovable-charcoal ml-1" />
-                  <span className="text-sm font-medium pr-1">Settings</span>
-                </>
-              ) : (
-                <>
-                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold overflow-hidden">
-                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`} alt="avatar" />
-                  </div>
-                  <span className="text-sm font-medium">{username}</span>
-                  <Settings size={14} className="text-lovable-muted ml-1" />
-                </>
-              )}
-            </div>
+            {!isDemo && (
+              <div 
+                className="flex items-center gap-3 bg-lovable-surface border border-lovable-border rounded-full px-3 py-1.5 shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => setIsSettingsOpen(true)}
+                title="Settings"
+              >
+                <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold overflow-hidden">
+                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`} alt="avatar" />
+                </div>
+                <span className="text-sm font-medium">{username}</span>
+                <Settings size={14} className="text-lovable-muted ml-1" />
+              </div>
+            )}
           </div>
         </header>
       )}
@@ -302,7 +295,7 @@ export default function Home() {
         <HomeView 
           username={username}
           onStartProject={(p) => {
-            if (!hasApiKey) {
+            if (!isDemo && !hasApiKey) {
               // Just transition and populate if no API key yet
               setPrompt(p);
               handleNewProject();
@@ -379,7 +372,7 @@ export default function Home() {
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-chat-bg">
           
           {/* Dynamic AI Model Configuration Alert */}
-          {!hasApiKey && (
+          {!isDemo && !hasApiKey && (
             <div className="bg-[#FFF8E6] border border-[#FFE4A0] rounded-xl p-4 shadow-sm mb-4">
               <div className="flex items-center gap-2 text-[#B38000] font-semibold mb-1">
                 <Settings size={16} /> AI Model Configuration Required
@@ -464,7 +457,7 @@ export default function Home() {
             />
             <button 
               onClick={handleSend}
-              disabled={!isConnected || !hasApiKey}
+              disabled={!isConnected || (!isDemo && !hasApiKey)}
               className="absolute right-2 bottom-2 p-2 bg-white text-lovable-charcoal hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg border border-lovable-border transition-colors flex items-center justify-center shadow-sm"
             >
               <Send size={16} />
@@ -514,10 +507,12 @@ export default function Home() {
         </>
       )}
 
-      <SettingsModal 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
-      />
+      {!isDemo && (
+        <SettingsModal 
+          isOpen={isSettingsOpen} 
+          onClose={() => setIsSettingsOpen(false)} 
+        />
+      )}
     </main>
   );
 }
