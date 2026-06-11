@@ -1045,7 +1045,12 @@ async def catch_all_proxy(path: str, request: Request):
             url += f"?{query_string}"
             
         headers = dict(request.headers)
-        headers.pop("host", None)
+        headers["host"] = f"{proxy_host}:{port}"
+        # Some frameworks (like Next.js) strictly validate Origin
+        if "origin" in headers:
+            headers["origin"] = f"http://{proxy_host}:{port}"
+        if "referer" in headers:
+            headers["referer"] = headers["referer"].replace(request.url.netloc, f"{proxy_host}:{port}")
         
         try:
             req = httpx_client.build_request(
@@ -1093,7 +1098,13 @@ async def proxy_preview_websocket(websocket: WebSocket, session_id: str, path: s
         
     try:
         await websocket.accept()
-        async with websockets.connect(url) as target_ws:
+        
+        ws_headers = {}
+        ws_headers["Host"] = f"{proxy_host}:{port}"
+        if "origin" in websocket.headers:
+            ws_headers["Origin"] = f"http://{proxy_host}:{port}"
+            
+        async with websockets.connect(url, extra_headers=ws_headers) as target_ws:
             async def forward_to_target():
                 try:
                     while True:
