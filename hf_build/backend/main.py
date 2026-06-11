@@ -260,6 +260,9 @@ async def proxy_preview(session_id: str, request: Request, path: str = ""):
         url += f"?{query_string}"
         
     headers = dict(request.headers)
+    for k in list(headers.keys()):
+        if k.lower().startswith("x-forwarded-"):
+            headers.pop(k, None)
     headers["host"] = f"{proxy_host}:{port}"
     if "origin" in headers:
         headers["origin"] = f"http://{proxy_host}:{port}"
@@ -288,6 +291,9 @@ async def proxy_preview(session_id: str, request: Request, path: str = ""):
             try:
                 url_ipv6 = url.replace("127.0.0.1", "[::1]")
                 ipv6_headers = dict(request.headers)
+                for k in list(ipv6_headers.keys()):
+                    if k.lower().startswith("x-forwarded-"):
+                        ipv6_headers.pop(k, None)
                 ipv6_headers["host"] = f"[::1]:{port}"
                 if "origin" in ipv6_headers:
                     ipv6_headers["origin"] = f"http://[::1]:{port}"
@@ -843,6 +849,11 @@ async def websocket_endpoint(websocket: WebSocket):
                 # Retrieve client settings and isolate them in ContextVar
                 client_settings = payload.get("settings")
                 if client_settings:
+                    # Clean up placeholder "Set via Environment Variable" or empty values to fallback to env
+                    if "api_keys" in client_settings:
+                        for k, v in list(client_settings["api_keys"].items()):
+                            if v == "Set via Environment Variable" or v == "":
+                                del client_settings["api_keys"][k]
                     session_settings.set(client_settings)
                 
                 # Default project name from first 20 chars of prompt
@@ -1066,6 +1077,9 @@ async def catch_all_proxy(path: str, request: Request):
             url += f"?{query_string}"
             
         headers = dict(request.headers)
+        for k in list(headers.keys()):
+            if k.lower().startswith("x-forwarded-"):
+                headers.pop(k, None)
         headers["host"] = f"{proxy_host}:{port}"
         # Some frameworks (like Next.js) strictly validate Origin
         if "origin" in headers:
@@ -1091,6 +1105,9 @@ async def catch_all_proxy(path: str, request: Request):
                 try:
                     url_ipv6 = url.replace("127.0.0.1", "[::1]")
                     ipv6_headers = dict(request.headers)
+                    for k in list(ipv6_headers.keys()):
+                        if k.lower().startswith("x-forwarded-"):
+                            ipv6_headers.pop(k, None)
                     ipv6_headers["host"] = f"[::1]:{port}"
                     if "origin" in ipv6_headers:
                         ipv6_headers["origin"] = f"http://[::1]:{port}"
@@ -1135,6 +1152,10 @@ async def proxy_preview_websocket(websocket: WebSocket, session_id: str, path: s
         for k, v in websocket.headers.items():
             if k.lower() not in hop_by_hop:
                 ws_headers[k] = v
+                
+        for k in list(ws_headers.keys()):
+            if k.lower().startswith("x-forwarded-"):
+                ws_headers.pop(k, None)
                 
         ws_headers["Host"] = f"{proxy_host}:{port}"
         if "origin" in ws_headers:
