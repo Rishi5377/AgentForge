@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node ./scripts/vercel-lfs.js && next build",
+    "build": "next build",
+    "build:vercel": "TURBOPACK=0 next build",
     "start": "next start",
     "lint": "eslint"
   },
