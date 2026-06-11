@@ -5,12 +5,8 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    // ESLint runs fine locally via `npm run lint`.
-    // Vercel uses pnpm which resolves eslint-config-next differently,
-    // causing build failures. Disable ESLint during CI builds.
-    ignoreDuringBuilds: true,
-  },
+  // Note: `eslint` key is NOT supported in Next.js 16+ next.config.ts
+  // ESLint is configured via eslint.config.mjs instead
 };
 
 export default nextConfig;
