@@ -1104,7 +1104,15 @@ async def proxy_preview_websocket(websocket: WebSocket, session_id: str, path: s
         if "origin" in websocket.headers:
             ws_headers["Origin"] = f"http://{proxy_host}:{port}"
             
-        async with websockets.connect(url, extra_headers=ws_headers) as target_ws:
+        import inspect
+        sig = inspect.signature(websockets.connect)
+        connect_kwargs = {}
+        if "additional_headers" in sig.parameters:
+            connect_kwargs["additional_headers"] = ws_headers
+        else:
+            connect_kwargs["extra_headers"] = ws_headers
+
+        async with websockets.connect(url, **connect_kwargs) as target_ws:
             async def forward_to_target():
                 try:
                     while True:
