@@ -32,6 +32,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [apiKey, setApiKey] = useState('');
   const [availableModels, setAvailableModels] = useState<any>({});
   const [saving, setSaving] = useState(false);
+  const [serverKeys, setServerKeys] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const API_URL = (process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8001').replace('wss://', 'https://').replace('ws://', 'http://');
@@ -49,38 +50,57 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       // Load local settings first
       const local = localStorage.getItem('agentforge_settings');
       let loadedLocal = false;
+      let localProvider = 'openai';
       if (local) {
         try {
           const data = JSON.parse(local);
           if (data?.models?.supervisor_provider) {
             setProvider(data.models.supervisor_provider);
+            localProvider = data.models.supervisor_provider;
             setModel(data.models.supervisor_model || '');
           }
           if (data?.api_keys) {
-            const existingKey = data.api_keys[data.models?.supervisor_provider || 'openai'];
+            const existingKey = data.api_keys[localProvider];
             if (existingKey) {
-              setApiKey(existingKey);
+              if (existingKey === "Set via Environment Variable") {
+                setApiKey('');
+              } else {
+                setApiKey(existingKey);
+              }
               loadedLocal = true;
             }
           }
         } catch(e) {}
       }
 
-      if (!loadedLocal) {
-        fetch(`${API_URL}/api/settings`)
-          .then(res => res.json())
-          .then(data => {
+      // Always fetch server settings to check which keys are configured in the environment
+      fetch(`${API_URL}/api/settings`)
+        .then(res => res.json())
+        .then(data => {
+          const newServerKeys: Record<string, boolean> = {};
+          if (data?.api_keys) {
+            Object.keys(data.api_keys).forEach(k => {
+              if (data.api_keys[k] === "Set via Environment Variable") {
+                newServerKeys[k] = true;
+              }
+            });
+          }
+          setServerKeys(newServerKeys);
+
+          if (!loadedLocal) {
             if (data?.models?.supervisor_provider) {
               setProvider(data.models.supervisor_provider);
               setModel(data.models.supervisor_model || '');
             }
             if (data?.api_keys) {
               const existingKey = data.api_keys[data.models?.supervisor_provider || 'openai'];
-              if (existingKey) setApiKey(existingKey);
+              if (existingKey && existingKey !== "Set via Environment Variable") {
+                setApiKey(existingKey);
+              }
             }
-          })
-          .catch(e => console.warn("Could not fetch settings", e));
-      }
+          }
+        })
+        .catch(e => console.warn("Could not fetch settings", e));
     }
   }, [isOpen]);
 
@@ -95,6 +115,18 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     if (provider === 'groq') return ['llama3-70b-8192', 'mixtral-8x7b-32768'];
     return [];
   }, [provider, availableModels]);
+
+  const placeholderText = useMemo(() => {
+    if (serverKeys[provider]) {
+      return "Configured on server (leave blank to use)";
+    }
+    if (provider === 'openai') return "sk-...";
+    if (provider === 'anthropic') return "sk-ant-...";
+    if (provider === 'gemini') return "AIzaSy...";
+    if (provider === 'groq') return "gsk_...";
+    return "Enter API key...";
+  }, [provider, serverKeys]);
+
 
 
 
@@ -249,7 +281,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             </label>
             <input
               type="password"
-              placeholder={`sk-...`}
+              placeholder={placeholderText}
               value={apiKey}
               onChange={e => setApiKey(e.target.value)}
               style={{
