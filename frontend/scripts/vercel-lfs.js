@@ -1,9 +1,11 @@
 const { execSync } = require('child_process');
 
 if (process.env.VERCEL === '1') {
-  console.log('Vercel environment detected. Installing and pulling Git LFS...');
+  console.log('Vercel environment detected. Pulling Git LFS files...');
   try {
-    execSync('yum install git-lfs -y', { stdio: 'inherit' });
+    // Vercel already has git-lfs installed.
+    // We just need to ensure the remote origin is set properly if it isn't.
+    execSync('git lfs install', { stdio: 'inherit' });
     execSync('git lfs pull', { stdio: 'inherit' });
     console.log('Git LFS pull successful.');
   } catch (error) {
@@ -11,5 +13,5 @@ if (process.env.VERCEL === '1') {
     process.exit(1);
   }
 } else {
-  console.log('Local environment detected. Skipping Git LFS install.');
+  console.log('Local environment detected. Skipping Git LFS pull.');
 }
