@@ -1,12 +1,21 @@
 import os
 import json
+import contextvars
 from langchain_groq import ChatGroq
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 
 SETTINGS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "memory", "settings.json")
 
+# ContextVar to store session-specific settings dynamically
+session_settings = contextvars.ContextVar("session_settings", default=None)
+
 def load_settings() -> dict:
+    # Check context variable first (for session-specific dynamic settings)
+    ctx_settings = session_settings.get()
+    if ctx_settings is not None:
+        return ctx_settings
+
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, "r") as f:

@@ -21,6 +21,7 @@ httpx_client = httpx.AsyncClient()
 
 
 from utils.project_indexer import generate_project_structure
+from llm.llm_client import session_settings
 
 from schemas.events import AgentEvent, UserPrompt
 from memory.persistence import init_db, log_event, create_or_update_project, get_projects, delete_project, add_chat_message, get_chat_history
@@ -141,6 +142,9 @@ def save_settings(settings: dict):
 
 @app.get("/api/settings")
 async def get_settings():
+    if IS_DEMO_MODE:
+        return {"models": {}, "api_keys": {}, "general": {}}
+        
     settings = load_settings()
     
     # Inject environment API keys so the frontend knows keys are configured (especially for Web/Demo version)
@@ -162,6 +166,8 @@ async def get_settings():
 
 @app.post("/api/settings")
 async def update_settings(settings: SettingsSchema):
+    if IS_DEMO_MODE:
+        return {"status": "success", "message": "Demo mode: settings not saved to server"}
     save_settings(settings.model_dump())
     return {"status": "success"}
 
@@ -824,6 +830,11 @@ async def websocket_endpoint(websocket: WebSocket):
             if payload.get("type") == "user_prompt":
                 prompt = payload.get("prompt")
                 
+                # Retrieve client settings and isolate them in ContextVar
+                client_settings = payload.get("settings")
+                if client_settings:
+                    session_settings.set(client_settings)
+                
                 # Default project name from first 20 chars of prompt
                 project_name = prompt[:20] + "..." if len(prompt) > 20 else prompt
                 workspace_dir = os.path.join(os.path.dirname(__file__), "workspace", f"app_{session_id}")
@@ -1045,7 +1056,12 @@ async def catch_all_proxy(path: str, request: Request):
             url += f"?{query_string}"
             
         headers = dict(request.headers)
-        headers.pop("host", None)
+        headers["host"] = f"{proxy_host}:{port}"
+        # Some frameworks (like Next.js) strictly validate Origin
+        if "origin" in headers:
+            headers["origin"] = f"http://{proxy_host}:{port}"
+        if "referer" in headers:
+            headers["referer"] = headers["referer"].replace(request.url.netloc, f"{proxy_host}:{port}")
         
         try:
             req = httpx_client.build_request(
@@ -1093,7 +1109,32 @@ async def proxy_preview_websocket(websocket: WebSocket, session_id: str, path: s
         
     try:
         await websocket.accept()
-        async with websockets.connect(url) as target_ws:
+        
+        ws_headers = {}
+        # Forward headers from original websocket connection, excluding hop-by-hop ones
+        hop_by_hop = {
+            "connection", "upgrade", "sec-websocket-key", "sec-websocket-version",
+            "sec-websocket-extensions", "sec-websocket-protocol", "host"
+        }
+        for k, v in websocket.headers.items():
+            if k.lower() not in hop_by_hop:
+                ws_headers[k] = v
+                
+        ws_headers["Host"] = f"{proxy_host}:{port}"
+        if "origin" in ws_headers:
+            ws_headers["Origin"] = f"http://{proxy_host}:{port}"
+        if "referer" in ws_headers:
+            ws_headers["referer"] = ws_headers["referer"].replace(websocket.url.netloc, f"{proxy_host}:{port}")
+            
+        import inspect
+        sig = inspect.signature(websockets.connect)
+        connect_kwargs = {}
+        if "additional_headers" in sig.parameters:
+            connect_kwargs["additional_headers"] = ws_headers
+        else:
+            connect_kwargs["extra_headers"] = ws_headers
+
+        async with websockets.connect(url, **connect_kwargs) as target_ws:
             async def forward_to_target():
                 try:
                     while True:
@@ -1118,10 +1159,17 @@ async def proxy_preview_websocket(websocket: WebSocket, session_id: str, path: s
                 except Exception:
                     pass
             
-            await asyncio.gather(
-                forward_to_target(),
-                forward_from_target()
+            # Use asyncio.wait to terminate both as soon as one exits
+            done, pending = await asyncio.wait(
+                [
+                    asyncio.create_task(forward_to_target()),
+                    asyncio.create_task(forward_from_target())
+                ],
+                return_when=asyncio.FIRST_COMPLETED
             )
+            for task in pending:
+                task.cancel()
+                
             try:
                 await websocket.close()
             except Exception:

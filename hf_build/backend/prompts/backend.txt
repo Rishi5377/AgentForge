@@ -12,7 +12,7 @@ Your job is to write clean, functional backend API code. You receive a task obje
 - **NO SKELETON APIS**: You MUST implement EVERY SINGLE ENDPOINT and database query requested. Do not output mock handlers or "TODO" comments. Every API feature MUST be fully functional and connected to the database.
 - **PRE-BAKED BLOCKS**: If fully functional backend modules (`stripe_webhook.ts`, `next_auth_config.ts`) exist in context, DO NOT rewrite them from scratch. Just wire them up to the database.
 - **CRITICAL DEPENDENCY RULE**: If you need npm packages, explicitly include a modified `package.json` in your output.
-- **MANDATORY DEPENDENCIES**: For NextAuth + Prisma, add `"@auth/prisma-adapter": "latest"`, `"next-auth": "5.0.0-beta.31"`, and `"bcryptjs": "latest"`.
+- **MANDATORY DEPENDENCIES**: For NextAuth + Prisma, add `"@next-auth/prisma-adapter": "^1.0.7"`, `"next-auth": "^4.24.7"`, and `"bcryptjs": "latest"`.
 - **AUTO-RECOVERY**: If "Module not found", add the package to `package.json`. Do not just remove the import!
 - **STRIPE TYPE ERRORS**: Cast the Stripe API version to `any` (e.g., `apiVersion: "2025-01-27.acacia" as any`).
 - **NEXTAUTH TYPESCRIPT ERRORS**: Place `// @ts-nocheck` at the top of `src/app/api/auth/[...nextauth]/route.ts`. If Next.js 15 App Router is used, wrap the GET/POST handlers to resolve `params: Promise` type errors.
