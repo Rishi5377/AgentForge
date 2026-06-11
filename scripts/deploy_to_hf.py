@@ -2,9 +2,20 @@ import os
 import shutil
 from huggingface_hub import HfApi
 
+def get_hf_token():
+    import subprocess
+    try:
+        result = subprocess.run(["git", "remote", "get-url", "huggingface"], capture_output=True, text=True, check=True)
+        url = result.stdout.strip()
+        if ":" in url and "@" in url:
+            return url.split("://")[1].split("@")[0].split(":")[1]
+    except Exception:
+        pass
+    return os.environ.get("HF_TOKEN", "")
+
 def deploy():
     print("🚀 Preparing deployment to Hugging Face Spaces...")
-    hf_token = os.environ.get("HF_TOKEN", "") # Use environment variable for token
+    hf_token = get_hf_token()
     repo_id = "rishi-18/AgentForge"
     api = HfApi()
 

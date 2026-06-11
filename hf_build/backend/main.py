@@ -260,7 +260,11 @@ async def proxy_preview(session_id: str, request: Request, path: str = ""):
         url += f"?{query_string}"
         
     headers = dict(request.headers)
-    headers.pop("host", None)
+    headers["host"] = f"{proxy_host}:{port}"
+    if "origin" in headers:
+        headers["origin"] = f"http://{proxy_host}:{port}"
+    if "referer" in headers:
+        headers["referer"] = headers["referer"].replace(request.url.netloc, f"{proxy_host}:{port}")
     
     try:
         req = httpx_client.build_request(
@@ -283,7 +287,13 @@ async def proxy_preview(session_id: str, request: Request, path: str = ""):
         if "127.0.0.1" in url:
             try:
                 url_ipv6 = url.replace("127.0.0.1", "[::1]")
-                req = httpx_client.build_request(request.method, url_ipv6, headers=headers, content=await request.body())
+                ipv6_headers = dict(request.headers)
+                ipv6_headers["host"] = f"[::1]:{port}"
+                if "origin" in ipv6_headers:
+                    ipv6_headers["origin"] = f"http://[::1]:{port}"
+                if "referer" in ipv6_headers:
+                    ipv6_headers["referer"] = ipv6_headers["referer"].replace(request.url.netloc, f"[::1]:{port}")
+                req = httpx_client.build_request(request.method, url_ipv6, headers=ipv6_headers, content=await request.body())
                 response = await httpx_client.send(req, stream=True)
                 resp = StreamingResponse(response.aiter_raw(), status_code=response.status_code, headers=dict(response.headers))
                 resp.set_cookie(key="preview_session", value=session_id, path="/", samesite="none", secure=True)
@@ -1080,7 +1090,13 @@ async def catch_all_proxy(path: str, request: Request):
             if "127.0.0.1" in url:
                 try:
                     url_ipv6 = url.replace("127.0.0.1", "[::1]")
-                    req = httpx_client.build_request(request.method, url_ipv6, headers=headers, content=await request.body())
+                    ipv6_headers = dict(request.headers)
+                    ipv6_headers["host"] = f"[::1]:{port}"
+                    if "origin" in ipv6_headers:
+                        ipv6_headers["origin"] = f"http://[::1]:{port}"
+                    if "referer" in ipv6_headers:
+                        ipv6_headers["referer"] = ipv6_headers["referer"].replace(request.url.netloc, f"[::1]:{port}")
+                    req = httpx_client.build_request(request.method, url_ipv6, headers=ipv6_headers, content=await request.body())
                     response = await httpx_client.send(req, stream=True)
                     return StreamingResponse(response.aiter_raw(), status_code=response.status_code, headers=dict(response.headers))
                 except Exception:
