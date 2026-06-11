@@ -21,6 +21,7 @@ httpx_client = httpx.AsyncClient()
 
 
 from utils.project_indexer import generate_project_structure
+from llm.llm_client import session_settings
 
 from schemas.events import AgentEvent, UserPrompt
 from memory.persistence import init_db, log_event, create_or_update_project, get_projects, delete_project, add_chat_message, get_chat_history
@@ -141,6 +142,9 @@ def save_settings(settings: dict):
 
 @app.get("/api/settings")
 async def get_settings():
+    if IS_DEMO_MODE:
+        return {"models": {}, "api_keys": {}, "general": {}}
+        
     settings = load_settings()
     
     # Inject environment API keys so the frontend knows keys are configured (especially for Web/Demo version)
@@ -162,6 +166,8 @@ async def get_settings():
 
 @app.post("/api/settings")
 async def update_settings(settings: SettingsSchema):
+    if IS_DEMO_MODE:
+        return {"status": "success", "message": "Demo mode: settings not saved to server"}
     save_settings(settings.model_dump())
     return {"status": "success"}
 
@@ -823,6 +829,11 @@ async def websocket_endpoint(websocket: WebSocket):
             
             if payload.get("type") == "user_prompt":
                 prompt = payload.get("prompt")
+                
+                # Retrieve client settings and isolate them in ContextVar
+                client_settings = payload.get("settings")
+                if client_settings:
+                    session_settings.set(client_settings)
                 
                 # Default project name from first 20 chars of prompt
                 project_name = prompt[:20] + "..." if len(prompt) > 20 else prompt

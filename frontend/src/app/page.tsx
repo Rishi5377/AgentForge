@@ -91,6 +91,20 @@ export default function Home() {
   // Check API keys on mount
   useEffect(() => {
     const API_URL = (process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8001').replace('wss://', 'https://').replace('ws://', 'http://');
+    
+    // Check localStorage first
+    const local = localStorage.getItem('agentforge_settings');
+    if (local) {
+      try {
+        const parsed = JSON.parse(local);
+        const keys = Object.values(parsed?.api_keys || {});
+        if (keys.length > 0 && keys.some(k => !!k)) {
+          setHasApiKey(true);
+          return;
+        }
+      } catch(e) {}
+    }
+
     fetch(`${API_URL}/api/settings`)
       .then(res => res.json())
       .then(data => {
@@ -102,15 +116,7 @@ export default function Home() {
         }
       })
       .catch(() => {
-        // Fallback to localStorage if backend unreachable
-        const local = localStorage.getItem('agentforge_settings');
-        if (local) {
-          try {
-            const parsed = JSON.parse(local);
-            const keys = Object.values(parsed?.api_keys || {});
-            setHasApiKey(keys.length > 0 && keys.some(k => !!k));
-          } catch(e) {}
-        }
+        setHasApiKey(false);
       });
   }, [isSettingsOpen]); // Re-check when settings modal closes
 
@@ -186,7 +192,17 @@ export default function Home() {
     
     setChatHistory(prev => [...prev, { role: 'user', content: prompt }]);
     clearMessages();
-    sendMessage("user_prompt", { prompt, session_id: currentSessionId });
+    
+    // Send user settings dynamically for Bring Your Own Key (BYOK) isolation
+    const cachedSettings = localStorage.getItem('agentforge_settings');
+    let settingsPayload = null;
+    if (cachedSettings) {
+      try {
+        settingsPayload = JSON.parse(cachedSettings);
+      } catch (e) {}
+    }
+    
+    sendMessage("user_prompt", { prompt, session_id: currentSessionId, settings: settingsPayload });
     setPrompt("");
   };
 
@@ -319,7 +335,17 @@ export default function Home() {
             setCurrentView('workspace');
             clearMessages();
             setChatHistory([{ role: 'user', content: p }]);
-            sendMessage("user_prompt", { prompt: p, session_id: newSessionId });
+            
+            // Send user settings dynamically for Bring Your Own Key (BYOK) isolation
+            const cachedSettings = localStorage.getItem('agentforge_settings');
+            let settingsPayload = null;
+            if (cachedSettings) {
+              try {
+                settingsPayload = JSON.parse(cachedSettings);
+              } catch (e) {}
+            }
+            
+            sendMessage("user_prompt", { prompt: p, session_id: newSessionId, settings: settingsPayload });
             setPrompt("");
           }} 
         />

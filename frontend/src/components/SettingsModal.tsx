@@ -46,21 +46,41 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       const savedUser = localStorage.getItem('agentforge_username');
       if (savedUser) setUsername(savedUser);
 
-      // Fetch existing settings and try to populate the simplified view
-      fetch(`${API_URL}/api/settings`)
-        .then(res => res.json())
-        .then(data => {
+      // Load local settings first
+      const local = localStorage.getItem('agentforge_settings');
+      let loadedLocal = false;
+      if (local) {
+        try {
+          const data = JSON.parse(local);
           if (data?.models?.supervisor_provider) {
             setProvider(data.models.supervisor_provider);
             setModel(data.models.supervisor_model || '');
           }
           if (data?.api_keys) {
-            // Find the first api key that exists
             const existingKey = data.api_keys[data.models?.supervisor_provider || 'openai'];
-            if (existingKey) setApiKey(existingKey);
+            if (existingKey) {
+              setApiKey(existingKey);
+              loadedLocal = true;
+            }
           }
-        })
-        .catch(e => console.warn("Could not fetch settings", e));
+        } catch(e) {}
+      }
+
+      if (!loadedLocal) {
+        fetch(`${API_URL}/api/settings`)
+          .then(res => res.json())
+          .then(data => {
+            if (data?.models?.supervisor_provider) {
+              setProvider(data.models.supervisor_provider);
+              setModel(data.models.supervisor_model || '');
+            }
+            if (data?.api_keys) {
+              const existingKey = data.api_keys[data.models?.supervisor_provider || 'openai'];
+              if (existingKey) setApiKey(existingKey);
+            }
+          })
+          .catch(e => console.warn("Could not fetch settings", e));
+      }
     }
   }, [isOpen]);
 
@@ -102,18 +122,20 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     };
 
     localStorage.setItem('agentforge_username', username);
+    localStorage.setItem('agentforge_settings', JSON.stringify(settingsPayload));
     window.dispatchEvent(new Event('storage')); // Optional: if we listen for it, or just let page.tsx reload. Actually we can just let it be, but setting localStorage is enough for a page refresh or subsequent loads.
 
-    try {
-      const API_URL = (process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8001').replace('wss://', 'https://').replace('ws://', 'http://');
-      await fetch(`${API_URL}/api/settings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settingsPayload)
-      });
-    } catch (e) {
-      console.warn("Failed to save to backend, falling back to localStorage", e);
-      localStorage.setItem('agentforge_settings', JSON.stringify(settingsPayload));
+    if (!isDemo) {
+      try {
+        const API_URL = (process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8001').replace('wss://', 'https://').replace('ws://', 'http://');
+        await fetch(`${API_URL}/api/settings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(settingsPayload)
+        });
+      } catch (e) {
+        console.warn("Failed to save to backend", e);
+      }
     }
 
     setSaving(false);
