@@ -1100,9 +1100,20 @@ async def proxy_preview_websocket(websocket: WebSocket, session_id: str, path: s
         await websocket.accept()
         
         ws_headers = {}
+        # Forward headers from original websocket connection, excluding hop-by-hop ones
+        hop_by_hop = {
+            "connection", "upgrade", "sec-websocket-key", "sec-websocket-version",
+            "sec-websocket-extensions", "sec-websocket-protocol", "host"
+        }
+        for k, v in websocket.headers.items():
+            if k.lower() not in hop_by_hop:
+                ws_headers[k] = v
+                
         ws_headers["Host"] = f"{proxy_host}:{port}"
-        if "origin" in websocket.headers:
+        if "origin" in ws_headers:
             ws_headers["Origin"] = f"http://{proxy_host}:{port}"
+        if "referer" in ws_headers:
+            ws_headers["referer"] = ws_headers["referer"].replace(websocket.url.netloc, f"{proxy_host}:{port}")
             
         import inspect
         sig = inspect.signature(websockets.connect)
@@ -1137,10 +1148,17 @@ async def proxy_preview_websocket(websocket: WebSocket, session_id: str, path: s
                 except Exception:
                     pass
             
-            await asyncio.gather(
-                forward_to_target(),
-                forward_from_target()
+            # Use asyncio.wait to terminate both as soon as one exits
+            done, pending = await asyncio.wait(
+                [
+                    asyncio.create_task(forward_to_target()),
+                    asyncio.create_task(forward_from_target())
+                ],
+                return_when=asyncio.FIRST_COMPLETED
             )
+            for task in pending:
+                task.cancel()
+                
             try:
                 await websocket.close()
             except Exception:
