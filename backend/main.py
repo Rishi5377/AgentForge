@@ -70,8 +70,10 @@ async def cleanup_worker():
 async def lifespan(app: FastAPI):
     await init_db()
     task = asyncio.create_task(cleanup_worker())
+    mem_task = asyncio.create_task(memory_cleanup_worker())
     yield
     task.cancel()
+    mem_task.cancel()
 
 app = FastAPI(lifespan=lifespan)
 
@@ -86,6 +88,35 @@ app.add_middleware(
 active_connections: Dict[WebSocket, str] = {}
 active_processes: Dict[str, Any] = {}
 active_ports: Dict[str, str] = {}
+last_active_timestamps: Dict[str, float] = {}
+
+async def memory_cleanup_worker():
+    import time
+    while True:
+        try:
+            await asyncio.sleep(60)
+            now = time.time()
+            to_kill = []
+            for sess_id, proc in list(active_processes.items()):
+                last_active = last_active_timestamps.get(sess_id, now)
+                if now - last_active > 600: # 10 minutes
+                    to_kill.append(sess_id)
+            
+            for sess_id in to_kill:
+                print(f"[Memory Cleanup] Terminating idle server for {sess_id}...")
+                try:
+                    proc = active_processes[sess_id]
+                    proc.terminate()
+                except Exception:
+                    pass
+                if sess_id in active_processes:
+                    del active_processes[sess_id]
+                if sess_id in active_ports:
+                    del active_ports[sess_id]
+                if sess_id in last_active_timestamps:
+                    del last_active_timestamps[sess_id]
+        except Exception as e:
+            print(f"Memory cleanup worker error: {e}")
 
 class SettingsSchema(BaseModel):
     models: Dict[str, str] = {}
@@ -207,6 +238,9 @@ class GithubSyncSchema(BaseModel):
 @app.api_route("/preview/{session_id}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
 @app.api_route("/preview/{session_id}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
 async def proxy_preview(session_id: str, request: Request, path: str = ""):
+    import time
+    last_active_timestamps[session_id] = time.time()
+    
     port = active_ports.get(session_id)
     if not port:
         return Response(content="Server not running", status_code=502)
@@ -632,6 +666,9 @@ async def start_dev_server(session_id: str, workspace_dir: str):
         return None
 
     recovery_error = None
+    import time
+    last_active_timestamps[session_id] = time.time()
+    
     # Phase 2: Start server
     start_msg_event = AgentEvent(
         agent="system",
@@ -1038,6 +1075,9 @@ async def catch_all_proxy(path: str, request: Request):
 
 @app.websocket("/preview/{session_id}/{path:path}")
 async def proxy_preview_websocket(websocket: WebSocket, session_id: str, path: str):
+    import time
+    last_active_timestamps[session_id] = time.time()
+    
     port = active_ports.get(session_id)
     if not port:
         await websocket.close(code=1011)
@@ -1058,6 +1098,7 @@ async def proxy_preview_websocket(websocket: WebSocket, session_id: str, path: s
                 try:
                     while True:
                         msg = await websocket.receive()
+                        last_active_timestamps[session_id] = time.time()
                         if "text" in msg and msg["text"] is not None:
                             await target_ws.send(msg["text"])
                         elif "bytes" in msg and msg["bytes"] is not None:
@@ -1069,6 +1110,7 @@ async def proxy_preview_websocket(websocket: WebSocket, session_id: str, path: s
                 try:
                     while True:
                         msg = await target_ws.recv()
+                        last_active_timestamps[session_id] = time.time()
                         if isinstance(msg, str):
                             await websocket.send_text(msg)
                         else:
